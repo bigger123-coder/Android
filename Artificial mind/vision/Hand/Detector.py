@@ -5,16 +5,33 @@ from mediapipe.tasks.python import vision
 
 class HandDetector:
     def __init__(self, model_path):
+        """Initialize a hand landmark detector with a model path.
+
+        Args:
+            model_path: Path to the MediaPipe hand landmarker task file.
+        """
         self.model = model_path
 
-        # Lưu kết quả mới nhất
+        # Store the latest result
         self.hand_landmarks = []
 
     def result_callback(self, result, output_image, timestamp_ms):
+        """Store hand landmarks returned by the asynchronous detector.
+
+        Args:
+            result: MediaPipe hand landmark result.
+            output_image: Processed image supplied by MediaPipe.
+            timestamp_ms: Result timestamp in milliseconds.
+        """
         self.hand_landmarks = result.hand_landmarks
 
     def hand_landmarker(self):
-        # Khởi tạo cài đặt của mediapipe
+        """Create and configure a live-stream hand landmarker.
+
+        Returns:
+            A configured MediaPipe ``HandLandmarker`` instance.
+        """
+        # Initialize MediaPipe settings
         base_options = python.BaseOptions(model_asset_path=self.model)
         options = vision.HandLandmarkerOptions(
             base_options=base_options,
@@ -28,9 +45,14 @@ class HandDetector:
         return hand_detector
 
     def draw_hand(self, frame):
+        """Draw detected hand landmarks and joint connections on a frame.
+
+        Args:
+            frame: BGR image modified in place with hand annotations.
+        """
         h, w, _ = frame.shape
 
-        # Danh sách các đường nối
+        # List of connections
         HAND_CONNECTIONS = [
             (0,1),(1,2),(2,3),(3,4),
             (0,5),(5,6),(6,7),(7,8),
@@ -42,18 +64,18 @@ class HandDetector:
 
         if self.hand_landmarks:
             for hand in self.hand_landmarks:
-                # Vẽ 21 landmark
+                # Draw 21 landmarks
                 for landmark in hand:
                     x = int(landmark.x * w)
                     y = int(landmark.y * h)
 
                     cv2.circle(frame, (x,y), 5, (0,0,255), -1)
-                # Vẽ đường nối các khớp
+                # Draw connections between joints
                 for start, end in HAND_CONNECTIONS:
-                    # Cặp tọa độ của điểm bắt đầu(start) 
+                    # Coordinates of the start point
                     x1 = int(hand[start].x * w)
                     y1 = int(hand[start].y * h)
-                    # Cặp tọa độ của điểm đến(end)
+                    # Coordinates of the destination point
                     x2 = int(hand[end].x * w)
                     y2 = int(hand[end].y * h)
 

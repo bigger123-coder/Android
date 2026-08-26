@@ -5,14 +5,31 @@ from mediapipe.tasks.python import vision
 
 class ObjectDetection:
     def __init__(self, model_path):
+        """Initialize an object detector with a MediaPipe task file.
+
+        Args:
+            model_path: Path to the object detector task file.
+        """
         self.model = model_path
 
         self.detections = []
 
     def result_callback(self, result, output_image, timestamp_ms):
+        """Store object detections returned by the asynchronous detector.
+
+        Args:
+            result: MediaPipe object detection result.
+            output_image: Processed image supplied by MediaPipe.
+            timestamp_ms: Result timestamp in milliseconds.
+        """
         self.detections = result.detections
 
     def object_detector(self):
+        """Create a live-stream object detector excluding people.
+
+        Returns:
+            A configured MediaPipe ``ObjectDetector`` instance.
+        """
         base_options = python.BaseOptions(model_asset_path=self.model)
         options = vision.ObjectDetectorOptions(
             base_options=base_options, 
@@ -27,15 +44,17 @@ class ObjectDetection:
         return object_detector
 
     def draw_object(self, frame):
-        """
-        Vẽ Bounding Box và tên object lên frame
+        """Draw detected object boxes, labels, and confidence scores.
+
+        Args:
+            frame: BGR image modified in place with object annotations.
         """
         h, w, _ = frame.shape
 
         for detection in self.detections:
             bbox = detection.bounding_box
 
-            # Các biến chứa x, y, height, width của bouding của 1 object khi được phát hiện
+            # Variables containing the x, y, height, and width of a detected object's bounding box
             x = bbox.origin_x
             y = bbox.origin_y
             height = bbox.height

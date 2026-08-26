@@ -1,10 +1,6 @@
 import cv2
 import time
-import sys
 import mediapipe as mp
-import numpy as np
-
-from pathlib import Path
 
 from vision.Face.Detector import FaceDetector
 from vision.Face.Recognition import FaceRecognizer
@@ -38,10 +34,14 @@ class VisionPipeline:
         # ==========================
         # Face
         # ==========================
-        frame, kpsses = self.face_detector.face_detect(frame) # Phát hiện và vẽ bbox cho từng khuôn mặt xuất hiện trong camera, kpsses là danh sách key points
+        frame, kpsses, bboxes = self.face_detector.face_detect(frame) # Phát hiện và vẽ bbox cho từng khuôn mặt xuất hiện trong camera, kpsses là danh sách key points
 
         if user_name is not None:
+            # Chế độ 1: Đăng ký khuôn mặt khi có truyền vào user_name
             self.face_recognizer.saving_embedding(frame, kpsses, user_name)
+        else:
+            # Chế độ 2: Tự động nhận diện (search) tất cả người quen khi không đăng ký
+            frame, results = self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
 
         # ==========================
         # Gesture
@@ -71,3 +71,5 @@ class VisionPipeline:
     def close(self):
         self.gesture_recognizer.close()
         self.object_detector.close()
+        self.face_detector.close()
+        self.face_recognizer.close()

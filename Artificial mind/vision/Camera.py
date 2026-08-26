@@ -1,7 +1,7 @@
 import cv2
 
 from vision.VisionPipeline import VisionPipeline
-# Khai báo camera
+# Initialize the camera
 cam = cv2.VideoCapture(0)
 
 vision = VisionPipeline()
