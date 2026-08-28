@@ -50,6 +50,11 @@ class FaceDatabase:
 
                 self.database[person_name].append(embedding)
 
+        if len(self.all_embedding) > 0:
+            self.all_embedding_ar = np.array(self.all_embedding, dtype=np.float32)
+            if self.all_embedding_ar.ndim == 3:
+                self.all_embedding_ar = self.all_embedding_ar.squeeze(axis=1)
+
 
     def add_person(self):
         """Add a person to the database.
@@ -75,25 +80,65 @@ class FaceDatabase:
             A dictionary containing the matched name, similarity score, and a
             boolean ``know`` flag indicating whether the threshold was met.
         """
+        # --- BƯỚC BẢO VỆ: KIỂM TRA TÍNH HỢP LỆ CỦA DATABASE ---
+        if self.all_embedding is None or len(self.all_embedding) == 0:
+            return {
+                "name": None,
+                "score": 0.0,
+                "know": False
+            }
+
+        # --- BƯỚC BẢO VỆ: KIỂM TRA TÍNH HỢP LỆ CỦA QUERY_EMBED ---
+        if query_embed is None:
+            return {
+                "name": None,
+                "score": 0.0,
+                "know": False
+            }
+
+        query_embed = np.squeeze(np.array(query_embed, dtype=np.float32))
+
+        # Kiểm tra nếu query_embed sai shape
+        if query_embed.ndim != 1 or query_embed.shape[0] != 512:
+            return {
+                "name": None,
+                "score": 0.0,
+                "know": False
+            }
+
+        # Kiểm tra xem có NaN hoặc Inf trong query_embed
+        if not np.isfinite(query_embed).all():
+            return {
+                "name": None,
+                "score": 0.0,
+                "know": False
+            }
+
+        # Tính norm của query và chuẩn hóa query để dùng phép Dot Product
+        norm_query = np.linalg.norm(query_embed)
+        if norm_query == 0.0:
+            return {
+                "name": None,
+                "score": 0.0,
+                "know": False
+            }
+
         threshold = 0.2121
 
         # Use squeeze to ensure query_embed has shape (512,)
         query_embed = np.squeeze(query_embed)
 
-        # Explicitly convert to a 2D ndarray (N, 512) to avoid shape errors when
-        # all_embedding is a list of arrays with shape (1, 512) instead of (512,)
-        all_embedding = np.array(self.all_embedding)
-        if all_embedding.ndim == 3:
-            all_embedding = all_embedding.squeeze(axis=1)
+        # Normalize database_embed to unit vector
+        norm_db = np.linalg.norm(self.all_embedding_ar, axis=1, keepdims=True)
+        norm_db = np.where(norm_db == 0, 1e-6, norm_db)
+        Normalized_db_embed = self.all_embedding_ar / norm_db
 
-        # Calculate the dot product
-        vector_dot = np.dot(self.all_embedding, query_embed)
-        # Calculate the lengths of the two vectors
-        norm_database = np.linalg.norm(self.all_embedding, axis=1)
+        # Normalize query_embed to unit vector
         norm_query = np.linalg.norm(query_embed)
+        normalized_query_embed = query_embed / norm_query
  
         # 1/ Calculate the distance to every vector; this is equivalent to cosine similarity
-        distance = vector_dot / (norm_database * norm_query)
+        distance = np.dot(Normalized_db_embed, normalized_query_embed)
 
         # 2/ Find the nearest neighbor
         best_idx = np.argmax(distance)
@@ -105,12 +150,12 @@ class FaceDatabase:
         if best_score >= threshold:
             return {
                 "name": best_person,
-                "score": best_score,
+                "score": float(best_score),
                 "know": True
             }
         else:
             return {
                 "name": None,
-                "score": best_score,
+                "score": float(best_score),
                 "know": False
             }

@@ -1,3 +1,4 @@
+from config import gpu_runtime
 from insightface.model_zoo import get_model
 import cv2, math
 from pathlib import Path

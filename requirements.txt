@@ -113,10 +113,6 @@ onnx==1.22.0
     # via
     #   -r requirements.in
     #   insightface
-onnxruntime==1.28.0
-    # via
-    #   -r requirements.in
-    #   insightface
 onnxruntime-gpu==1.28.0
     # via -r requirements.in
 opencv-contrib-python==5.0.0.93
