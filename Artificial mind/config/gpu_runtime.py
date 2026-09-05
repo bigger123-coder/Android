@@ -7,7 +7,6 @@ _DLL_DIRECTORIES = (
     _NVIDIA_ROOT / "cu13" / "bin" / "x86_64",
     _NVIDIA_ROOT / "cu13" / "bin",
     _NVIDIA_ROOT / "cublas" / "bin",
-    _NVIDIA_ROOT / "cuda_nvrtc" / "bin",
     _NVIDIA_ROOT / "cudnn" / "bin",
     _NVIDIA_ROOT / "nvjitlink" / "bin",
 )

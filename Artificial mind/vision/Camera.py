@@ -14,7 +14,7 @@ try:
         if not ret:
             break
 
-        frame = vision.process(frame, user_name=None)
+        frame = vision.process(frame)
 
         cv2.imshow("AI vision", frame)
 

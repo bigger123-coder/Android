@@ -63,13 +63,6 @@ class FaceDatabase:
         """
         pass
 
-    def get_person(self):
-        """Retrieve a person from the database.
-
-        This method is currently a placeholder and returns no value.
-        """
-        pass
-
     def search(self, query_embed):
         """Find the closest stored face embedding by cosine similarity.
 
@@ -80,7 +73,7 @@ class FaceDatabase:
             A dictionary containing the matched name, similarity score, and a
             boolean ``know`` flag indicating whether the threshold was met.
         """
-        # --- BƯỚC BẢO VỆ: KIỂM TRA TÍNH HỢP LỆ CỦA DATABASE ---
+        # --- SAFETY CHECK: VALIDATE DATABASE ---
         if self.all_embedding is None or len(self.all_embedding) == 0:
             return {
                 "name": None,
@@ -88,7 +81,7 @@ class FaceDatabase:
                 "know": False
             }
 
-        # --- BƯỚC BẢO VỆ: KIỂM TRA TÍNH HỢP LỆ CỦA QUERY_EMBED ---
+        # --- SAFETY CHECK: VALIDATE QUERY_EMBED ---
         if query_embed is None:
             return {
                 "name": None,
@@ -98,7 +91,7 @@ class FaceDatabase:
 
         query_embed = np.squeeze(np.array(query_embed, dtype=np.float32))
 
-        # Kiểm tra nếu query_embed sai shape
+        # Check if query_embed has an invalid shape
         if query_embed.ndim != 1 or query_embed.shape[0] != 512:
             return {
                 "name": None,
@@ -106,7 +99,7 @@ class FaceDatabase:
                 "know": False
             }
 
-        # Kiểm tra xem có NaN hoặc Inf trong query_embed
+        # Check whether query_embed contains NaN or Inf values
         if not np.isfinite(query_embed).all():
             return {
                 "name": None,
@@ -114,7 +107,7 @@ class FaceDatabase:
                 "know": False
             }
 
-        # Tính norm của query và chuẩn hóa query để dùng phép Dot Product
+        # Compute the query norm and normalize the query for dot-product similarity
         norm_query = np.linalg.norm(query_embed)
         if norm_query == 0.0:
             return {

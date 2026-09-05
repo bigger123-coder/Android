@@ -9,11 +9,13 @@ from vision.Hand.Gesture_recognizer import GestureRecognizer
 
 from vision.Object.Detection import ObjectDetection
 
-from config.vision_config import VisionConfig
+from config.vision_config import ModelsConfig
+
+from STT_and_TTS.State_machine import STTStateMachine
 
 class VisionPipeline:
     def __init__(self):
-        self.models = VisionConfig()
+        self.models = ModelsConfig()
 
         # Face
         self.face_detector = FaceDetector(self.models.face_detector_model_path)
@@ -27,20 +29,25 @@ class VisionPipeline:
         self.detector = ObjectDetection(self.models.object_detection_model_path)
         self.object_detector = self.detector.object_detector()
 
+        # State machine
+        self.state_machine = STTStateMachine()
+
     # ==========================
     # PROCESSING
     # ==========================
-    def process(self, frame, user_name):
+    def process(self, frame):
         # ==========================
         # Face
         # ==========================
-        frame, kpsses, bboxes = self.face_detector.face_detect(frame) # Phát hiện và vẽ bbox cho từng khuôn mặt xuất hiện trong camera, kpsses là danh sách key points
+        frame, kpsses, bboxes = self.face_detector.face_detect(frame)  # Detect and draw a bounding box for each face in the camera; kpsses is the list of key points
+
+        user_name = self.state_machine.after_listen()
 
         if user_name is not None:
-            # Chế độ 1: Đăng ký khuôn mặt khi có truyền vào user_name
+            # Mode 1: Register a face when user_name is provided
             self.face_recognizer.saving_embedding(frame, kpsses, user_name)
         else:
-            # Chế độ 2: Tự động nhận diện (search) tất cả người quen khi không đăng ký
+            # Mode 2: Automatically recognize known people when no registration is provided
             frame, results = self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
 
         # ==========================

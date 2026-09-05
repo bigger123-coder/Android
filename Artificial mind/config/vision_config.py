@@ -19,7 +19,7 @@ HAND_MODELS_PATH = MODELS_PATH / "Hand"
 # ==========================
 OBJECT_MODELS_PATH = MODELS_PATH / "Object"
 
-class VisionConfig:
+class ModelsConfig:
     def __init__(self):
         """Build paths to the face, hand, and object detection models."""
         self.face_detector_model_path = str(FACE_MODELS_PATH / "det_10g.onnx")  # Face detection model

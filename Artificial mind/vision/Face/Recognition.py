@@ -120,14 +120,14 @@ class FaceRecognizer:
                     saving_path = user_folder / saving_file
             
                     np.save(saving_path, embedding)
-                    print(f"Đã lưu embedding {user_name} thứ {current_embed_file} (Yaw: {yaw_asym:.4f}, Roll: {roll:.2f})")
+                    print(f"Saved embedding for {user_name} #{current_embed_file} (Yaw: {yaw_asym:.4f}, Roll: {roll:.2f})")
                     current_embed_file += 1
                     
                     if current_embed_file >= 10:
                         break
 
     def recognize_faces(self, frame, kpsses, bboxes):
-        """Nhận diện tất cả khuôn mặt, vẽ bounding box và hiển thị tên lên frame.
+        """Recognize all faces, draw bounding boxes, and display names on the frame.
 
         Args:
             frame: Current BGR camera frame.
@@ -135,24 +135,24 @@ class FaceRecognizer:
             bboxes: Bounding box coordinates for each detected face.
 
         Returns:
-            frame: Khung hình đã được vẽ bounding box và tên.
-            results: Danh sách kết quả nhận diện.
+            frame: Frame with bounding boxes and names drawn on it.
+            results: List of recognition results.
         """
         if len(kpsses) == 0 or len(bboxes) == 0:
             return frame, []
 
         recognition_results = []
 
-        # Duyệt qua từng khuôn mặt tương ứng với bboxes và kpsses
+        # Iterate through each face corresponding to the bboxes and kpsses
         for i, kpss in enumerate(kpsses):
-            bbox = bboxes[i]  # Lấy tọa độ bbox của khuôn mặt hiện tại (ví dụ: [x1, y1, x2, y2])
+            bbox = bboxes[i]  # Get the current face bounding box coordinates (for example: [x1, y1, x2, y2])
             x1, y1, x2, y2 = map(int, bbox[:4])
 
-            # 1. Căn chỉnh khuôn mặt và lấy vector embedding[cite: 3]
+            # 1. Align the face and extract its embedding vector
             aligned_frame = face_alighment(frame, kpss)
             embedding = self.get_embedding(aligned_frame)
 
-            # 2. Gọi hàm search từ FaceDatabase để tìm danh tính[cite: 4]
+            # 2. Use the FaceDatabase search function to find the identity
             match_result = self.face_database.search(embedding)
 
             name = match_result["name"]
@@ -167,19 +167,19 @@ class FaceRecognizer:
                 "know": know
             })
 
-            # 3. Xác định màu sắc và nội dung chữ dựa vào trạng thái nhận diện
+            # 3. Determine the text color and label based on recognition status
             if know:
                 text = f"{name} ({score:.2f})"
-                color = (0, 255, 0)  # Xanh lá cho người quen
+                color = (0, 255, 0)  # Green for a known person
             else:
                 text = "Unknown"
-                color = (0, 0, 255)  # Đỏ cho người lạ
+                color = (0, 0, 255)  # Red for an unknown person
 
-            # 4. Vẽ Bounding Box quanh khuôn mặt
+            # 4. Draw a bounding box around the face
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
 
-            # 5. Vẽ text tên ngay phía trên góc trái của Bounding Box
-            # Đảm bảo vị trí y không bị tràn lên trên cùng của khung hình
+            # 5. Draw the name text just above the upper-left corner of the bounding box
+            # Ensure the y position does not overflow beyond the top of the frame
             text_y = y1 - 10 if y1 - 10 > 10 else y1 + 20
             
             cv2.putText(
