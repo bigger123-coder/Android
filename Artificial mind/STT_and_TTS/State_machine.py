@@ -25,9 +25,11 @@ class STTStateMachine(StateChart):
         if not self.listener.utterance_queue.empty():
             audio_data = self.listener.utterance_queue.get()
 
-            process_audio(audio_data)
+            user_name = process_audio(audio_data)
 
             # Delete audio_data after processing
             del audio_data
 
         self.IDLE()
+
+        return user_name

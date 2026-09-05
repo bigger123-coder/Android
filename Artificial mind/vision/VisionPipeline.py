@@ -1,6 +1,7 @@
 import cv2
 import time
 import mediapipe as mp
+import threading
 
 from vision.Face.Detector import FaceDetector
 from vision.Face.Recognition import FaceRecognizer
@@ -32,20 +33,32 @@ class VisionPipeline:
         # State machine
         self.state_machine = STTStateMachine()
 
+        self._start_audio_thread()
+        self.user_name = None
+
     # ==========================
     # PROCESSING
     # ==========================
+    def _start_audio_thread(self):
+        def run_fsm():
+            while True:
+                self.user_name = self.state_machine.after_listen()
+
+        threading.Thread(target=run_fsm, daemon=True).start()
+
+
     def process(self, frame):
         # ==========================
         # Face
         # ==========================
         frame, kpsses, bboxes = self.face_detector.face_detect(frame)  # Detect and draw a bounding box for each face in the camera; kpsses is the list of key points
 
-        user_name = self.state_machine.after_listen()
-
-        if user_name is not None:
+        if self.user_name is not None:
             # Mode 1: Register a face when user_name is provided
-            self.face_recognizer.saving_embedding(frame, kpsses, user_name)
+            self.face_recognizer.saving_embedding(frame, kpsses, self.user_name)
+
+            # Reset variable user_name to None
+            self.user_name = None
         else:
             # Mode 2: Automatically recognize known people when no registration is provided
             frame, results = self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
