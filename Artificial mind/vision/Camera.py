@@ -22,5 +22,6 @@ try:
             break
 
 finally:
+    cam.release()
     vision.close()
     cv2.destroyAllWindows()

@@ -7,7 +7,7 @@ import collections
 import threading
 
 class VADlistener:
-    def __init__(self):
+    def __init__(self, stop_event):
         # Initiate necessary variables
         self.rate = 48000
         self.frame_duration = 20
@@ -19,6 +19,8 @@ class VADlistener:
 
         self.audio_queue = queue.Queue()
         self.utterance_queue = queue.Queue()
+
+        self.stop_event = stop_event
 
     def audio_callback(self, indata, frames, time, status):
         if status:
@@ -38,6 +40,9 @@ class VADlistener:
         silience_count = 0
 
         while True:
+            if self.stop_event and self.stop_event.is_set():
+                break
+
             try:
                 frame_bytes = self.audio_queue.get(timeout=1.0)
 
@@ -46,6 +51,8 @@ class VADlistener:
                 if not trigger:
                     ring_buffer.append((frame_bytes, is_speech))
 
+                    self.num_voices = 0
+
                     # Count the number of voices
                     for _, speech in ring_buffer:
                         if speech:
@@ -53,37 +60,38 @@ class VADlistener:
 
                     if self.num_voices > 0.6 * ring_buffer.maxlen:
                         trigger = True
+                        self.num_voices = 0
                         print ("Người dùng đang nói, trigger=True")
 
                         for f, _ in ring_buffer:
                             audio_frames.append(f)
                         ring_buffer.clear()
 
+                else:
+                    audio_frames.append(frame_bytes)
+
+                    if not is_speech:
+                        silience_count += 1
                     else:
-                        audio_frames.append(frame_bytes)
+                        # Reset silience_count to 0 when ppl continue speaking
+                        silience_count = 0 
 
-                        if not is_speech:
-                            silience_count += 1
-                        else:
-                            # Reset silience_count to 0 when ppl continue speaking
-                            silience_count = 0 
+                    if silience_count >= silience_limit_frame:
+                        print("Người dùng đã dừng nói")
 
-                        if silience_count >= silience_limit_frame:
-                            print("Người dùng đã dừng nói")
+                        # Gom các mảng byte lại, đổi về mảng NumPy kiểu float32 chuẩn để Whisper đọc
+                        raw_bytes = b"".join(audio_frames)
+                        audio_np = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32767
 
-                            # Gom các mảng byte lại, đổi về mảng NumPy kiểu float32 chuẩn để Whisper đọc
-                            raw_bytes = b"".join(audio_frames)
-                            audio_np = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32767
+                        self.utterance_queue.put(audio_np)
 
-                            self.utterance_queue.put(audio_np)
+                        audio_frames.clear()
+                        del raw_bytes
+                        del audio_np
 
-                            audio_frames.clear()
-                            del raw_bytes
-                            del audio_np
-
-                            silience_count = 0 
-                            trigger = False
-                            break
+                        silience_count = 0 
+                        trigger = False
+                        break
             except queue.Empty: 
                 continue
 
@@ -96,4 +104,6 @@ class VADlistener:
 
         with sd.InputStream(samplerate=self.rate, blocksize=self.chunk_size, device=14, channels=1, dtype="float32",callback=self.audio_callback):
             while self.utterance_queue.empty():
-                time.sleep(100)
+                if self.stop_event and self.stop_event.is_set():
+                    break
+                time.sleep(0.1)

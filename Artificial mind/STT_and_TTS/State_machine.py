@@ -1,35 +1,48 @@
 from statemachine import StateChart, State
-from VAD import VADlistener
-from STT import process_audio
+from .VAD import VADlistener
+from .STT import process_audio
+import threading
 
 
 class STTStateMachine(StateChart):
     # Initiate events
     IDLE = State(initial=True)
     LISTENING = State()
-    PROCESSING = State(final=True)
+    PROCESSING = State()
 
-    STT_cycle = (IDLE.to(LISTENING) | LISTENING.to(PROCESSING) | PROCESSING.to(IDLE))
-
-    def __init__(self):
-        super().__init__()
-        self.listener = VADlistener()
+    trigger_listening = IDLE.to(LISTENING)
+    trigger_process = LISTENING.to(PROCESSING)
+    trigger_idle = PROCESSING.to(IDLE)
     
-    def on_listen(self):
+    def __init__(self, stop_event=None):
+        super().__init__()
+        self.listener = VADlistener(stop_event=stop_event)
+        self.recognized_name = None
+        self._known_faces_lock = threading.Lock()
+        self.known_faces = []
+    
+    def start_listening(self):
+        self.trigger_listening()
+
         self.listener.listen_until_utterance()
 
-        self.PROCESSING()
+        self.trigger_process()
 
-    def after_listen(self):
+    def on_enter_processing(self):
+        user_name = None
+
         # Lấy mảng âm thanh
         if not self.listener.utterance_queue.empty():
             audio_data = self.listener.utterance_queue.get()
 
-            user_name = process_audio(audio_data)
+            with self._known_faces_lock:
+                known_faces = list(self.known_faces)
+
+            user_name = process_audio(audio_data, known_faces)
 
             # Delete audio_data after processing
             del audio_data
 
-        self.IDLE()
+        self.recognized_name = user_name
 
-        return user_name
+        self.trigger_idle()
