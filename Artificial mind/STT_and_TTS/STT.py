@@ -1,92 +1,64 @@
 from faster_whisper import WhisperModel
 from pathlib import Path
-import json
+from scipy.signal import resample_poly
+from Database_manager import save_person_name
+
+import threading
+import numpy as np
 import re
 
-# Directory of person_ID json file
-base_dir = Path(__file__).resolve().parent
-json_path = base_dir / "memory" / "Person_ID.json"
+# Khởi tạo biến model ban đầu là None để tránh tải nặng lúc khởi động ứng dụng
+_model = None
+_model_lock = threading.Lock()
 
-# Ensure memory directory exists
-json_path.parent.mkdir(parents=True, exist_ok=True)
-
-# Download model
-model = WhisperModel("base", device="cpu", compute_type="int8")
+def get_whisper_model():
+    """Hàm tải và trả về model theo cơ chế Lazy Loading an toàn cho luồng (thread-safe)"""
+    global _model
+    if _model is None:
+        with _model_lock:
+            if _model is None:
+                print("Đang tải mô hình Whisper lần đầu tiên...")
+                _model = WhisperModel("base", device="cpu", compute_type="int8")
+    return _model
 
 def process_audio(audio_data):
-    """Transcribe audio, with the current per-face known flags available.
+    audio_16k = resample_poly(audio_data, up=1, down=3).astype(np.float32)
 
-    Args:
-        audio_data: Audio data captured by the VAD listener.
-        known_faces: Boolean values corresponding to detected faces.
-    """
     puntuation_tokens = [0, 2467]
 
-    segments, _ = model.transcribe(audio_data, language="en", beam_size=5, suppress_tokens=puntuation_tokens)
+    # Lấy model thông qua hàm lazy loading khi thực sự cần xử lý âm thanh
+    model = get_whisper_model()
+    segments, _ = model.transcribe(audio_16k, task="translate", beam_size=5, suppress_tokens=puntuation_tokens)
 
     person_name = None 
 
     for segment in segments:
         text = segment.text.strip()
        
-        match = re.search(r"\bmy\s+name\s+is\s+(.+)", text,  re.IGNORECASE)
+        match = re.search(r"\bmy\s+name\s+is\s+(.+)", text, re.IGNORECASE)
 
         if match:
-            person_name = " ".join(match.group(1).split())
-            return person_name
+            # Tách toàn bộ các từ nằm sau cụm "my name is"
+            words = match.group(1).split()
+            name_words = []
+            
+            # Danh sách các từ nối hoặc từ khóa bắt đầu thông tin phụ phía sau tên
+            stop_words = {"and", "i", "im", "i'm", "who", "am", "my", "is", "the", "a", "an", "years", "old"}
+            
+            for word in words:
+                # Làm sạch từ khỏi các dấu câu (dấu phẩy, chấm,...)
+                clean_word = re.sub(r'[^\w]', '', word)
+                
+                # Nếu gặp từ dừng, từ trống, hoặc chứa chữ số (như số tuổi 18) thì dừng lại ngay
+                if not clean_word or clean_word.lower() in stop_words or any(char.isdigit() for char in clean_word):
+                    break
+                    
+                name_words.append(clean_word)
+                
+                # Giới hạn tối đa 3 từ cho tên người (phòng trường hợp câu nói không chứa stop word)
+                if len(name_words) >= 3:
+                    break
 
-        #else: --> Khi làm TTS thì viết thêm dòng này để android báo người dùng trả lời lỗi
-
-    return None
-    
-
-def load_person_database():
-    if not json_path.exists():
-        return {}
-
-    with open(json_path, "r") as file:
-        return json.load(file)
-
-def get_next_id(database):
-    if not database:
-        return "00001"
-
-    ids = []
-
-    for person_id in database.keys():
-        try:
-            ids.append(int(person_id))
-        except ValueError:
-            continue
-
-    if not ids:
-        return "00001"
-
-    next_id = max(ids) + 1
-    return f"{next_id:05d}"
-        
-# Lưu tên người dùng vào file json kèm theo ID của người đó
-def save_person_name(person_name):
-    if not person_name:
-        return None
-
-    # Load database
-    database = load_person_database()
-
-    # Checking is current person existed
-    for person_id, person_data in database.items():
-        saved_name = person_data.get("name")
-
-        if saved_name and saved_name.lower() == person_name.lower():
-            print(f"Person already exists: {saved_name}({person_id})")
-            return person_id
-
-    # Create new ID for unvalid person
-    person_id = get_next_id(database)
-
-    # Save new person
-    database[person_id] = {"name":person_name}
-
-    # Save json
-    with open(json_path, "w") as file:
-        json.dump(database, file, indent=4)1
+            if name_words:
+                person_name = " ".join(name_words)
+                save_person_name(person_name)

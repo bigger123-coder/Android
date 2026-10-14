@@ -1,12 +1,13 @@
 from config import gpu_runtime
 from insightface.model_zoo import get_model
-import cv2, math
 from pathlib import Path
-import numpy as np
-
 from vision.Face.Alignment import face_alighment
 from vision.Face import Frame_filter
 from vision.Face.FaceDatabase import FaceDatabase
+from STT_and_TTS.Database_manager import get_next_id, load_person_database, update_person_embed_dir
+
+import numpy as np
+import cv2, math
 
 class FaceRecognizer:
     def __init__(self, model_path, ctx_id=0):
@@ -29,6 +30,9 @@ class FaceRecognizer:
         # Create the path to the embedding folder
         self.BASE_DIR = Path(__file__).resolve().parent.parent.parent
         self.EMBED_FOLDER = self.BASE_DIR / "memory" / "face embedding"
+
+        # Create EMBED_FOLDER if it was not created
+        self.EMBED_FOLDER.mkdir(parents=True, exist_ok=True)
 
         # State
         self.frame_id = 0
@@ -70,7 +74,7 @@ class FaceRecognizer:
         Args:
             frame: Current BGR camera frame.
             kpsses: Facial landmark arrays detected in the frame.
-            user_name: Person's name used to select the output directory.
+            person_id: Person's id used to select the output directory.
 
         The frame must pass blur and pose checks. At most ten embeddings are
         stored for each user.
@@ -91,9 +95,27 @@ class FaceRecognizer:
 
         # Capture an embedding every 30 frames
         if self.frame_id % 30 == 0:
-            # Automatically create a folder using the user's name
-            user_folder = self.EMBED_FOLDER / user_name.strip()
+            # Load database
+            person_database = load_person_database()
+
+            # Tìm xem user_name đã tồn tại trong JSON chưa để dùng lại ID cũ, nếu chưa thì cấp ID mới
+            person_id = None
+            for pid, pdata in person_database.items():
+                saved_name = pdata.get("name")
+
+                if saved_name and saved_name.lower() == user_name.lower().strip():
+                    person_id = pid
+                    break
+
+            if not person_id:
+                person_id = get_next_id(person_database)
+
+            # Automatically create a folder using the user's id
+            user_folder = self.EMBED_FOLDER / person_id
             user_folder.mkdir(parents=True, exist_ok=True)
+
+            # Cập nhật thư mục embedding vào database cho person_id này
+            update_person_embed_dir(person_id, str(user_folder))
             
             # Count the existing embedding files
             current_embed_file = len(list(user_folder.glob("*.npy")))
@@ -115,7 +137,7 @@ class FaceRecognizer:
                     embedding = self.get_embedding(aligned_frame)
                 
                     # Save the embedding as an .npy file
-                    file_name = user_name.lower().replace(" ", "_")
+                    file_name = person_id
                     saving_file = f"{file_name}_{current_embed_file}.npy"
                     saving_path = user_folder / saving_file
             

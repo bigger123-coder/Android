@@ -1,6 +1,7 @@
 from statemachine import StateChart, State
 from .VAD import VADlistener
 from .STT import process_audio
+
 import threading
 
 
@@ -35,10 +36,7 @@ class STTStateMachine(StateChart):
         if not self.listener.utterance_queue.empty():
             audio_data = self.listener.utterance_queue.get()
 
-            with self._known_faces_lock:
-                known_faces = list(self.known_faces)
-
-            user_name = process_audio(audio_data, known_faces)
+            user_name = process_audio(audio_data)
 
             # Delete audio_data after processing
             del audio_data

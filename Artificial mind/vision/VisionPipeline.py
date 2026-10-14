@@ -74,9 +74,6 @@ class VisionPipeline:
             # Mode 2: Automatically recognize known people when no registration is provided
             frame, results = self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
 
-        known_faces = [bool(result.get("know", False)) for result in results]
-        self.state_machine.update_known_faces(known_faces)
-
         # ==========================
         # Gesture
         # ==========================
