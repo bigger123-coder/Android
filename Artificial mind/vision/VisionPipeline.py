@@ -2,18 +2,16 @@ import cv2
 import time
 import mediapipe as mp
 import threading
+import winsound
+
+from pathlib import Path
 
 from vision.Face.Detector import FaceDetector
 from vision.Face.Recognition import FaceRecognizer
-
 from vision.Hand.Gesture_recognizer import GestureRecognizer
-
 from vision.Object.Detection import ObjectDetection
-
 from config.vision_config import ModelsConfig
-
 from STT_and_TTS.VAD import VADlistener
-
 from STT_and_TTS.State_machine import STTStateMachine
 
 class VisionPipeline:
@@ -36,12 +34,16 @@ class VisionPipeline:
         self._stop_event = threading.Event()
         self._audio_thread = None
 
-         # State machine
+        # State machine
         self.state_machine = STTStateMachine(stop_event=self._stop_event)
 
         self._start_audio_thread()
 
         self.user_name = None
+
+        # Voice audio path
+        self.base_dir = Path(__file__).resolve().parent.parent
+        self.voice_audio = self.base_dir / "Voice" / "Greeting_voice.wav"
 
     # ==========================
     # PROCESSING
@@ -63,16 +65,27 @@ class VisionPipeline:
         # ==========================
         frame, kpsses, bboxes = self.face_detector.face_detect(frame)  # Detect and draw a bounding box for each face in the camera; kpsses is the list of key points
 
-        if self.user_name is not None:
-            # Mode 1: Register a face when user_name is provided
+        # Luôn chạy nhận diện/tìm kiếm trước để biết khung hình chứa ai (Known hay Unknown)
+        frame, results = self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
+
+        # Checking is there any unknown face
+        has_unknown_face = None
+
+        for face in results:
+            if not face.get("know", False):
+                has_unknown_face = True
+                break
+
+        if has_unknown_face:
+            # Mode 1: Register a face when camera identifies an unknown face
+            winsound.PlaySound(self.voice_audio, flags=winsound.SND_ASYNC)
             self.face_recognizer.saving_embedding(frame, kpsses, self.user_name)
-            results = []
+
+            # Draw red square and display "unknown" on unrecognized face
+            self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
 
             # Reset variable user_name to None
             self.user_name = None
-        else:
-            # Mode 2: Automatically recognize known people when no registration is provided
-            frame, results = self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
 
         # ==========================
         # Gesture
