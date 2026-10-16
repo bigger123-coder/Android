@@ -6,15 +6,15 @@ import winsound
 
 from pathlib import Path
 
-from .Face.Detector import FaceDetector
-from .Face.Recognition import FaceRecognizer
-from .Hand.Gesture_recognizer import GestureRecognizer
-from .Object.Detection import ObjectDetection
+from Artificial_mind.vision.Face.Detector import FaceDetector
+from Artificial_mind.vision.Face.Recognition import FaceRecognizer
+from Artificial_mind.vision.Hand.Gesture_recognizer import GestureRecognizer
+from Artificial_mind.vision.Object.Detection import ObjectDetection
 
-from ..config.vision_config import ModelsConfig
+from Artificial_mind.config.vision_config import ModelsConfig
 
-from ..STT_and_TTS.VAD import VADlistener
-from ..STT_and_TTS.State_machine import STTStateMachine
+from Artificial_mind.STT_and_TTS.VAD import VADlistener
+from Artificial_mind.STT_and_TTS.State_machine import STTStateMachine
 
 class VisionPipeline:
     def __init__(self):
@@ -44,7 +44,7 @@ class VisionPipeline:
         self.user_name = None
 
         # Voice audio path
-        self.base_dir = Path(__file__).resolve().parent.parent
+        self.base_dir = Path(__file__).resolve().parents[2]
         self.voice_audio = self.base_dir / "Voice" / "Greeting_voice.wav"
 
         # Saving name status 
@@ -75,20 +75,14 @@ class VisionPipeline:
         frame, results = self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
 
         # Checking is there any unknown face
-        has_unknown_face = None
-
-        for face in results:
-            if not face.get("know", False):
-                has_unknown_face = True
-                break
+        has_unknown_face = any(not face.get("know", False) for face in results)
 
         if has_unknown_face:
             if not self.is_enrolling:
                 self.is_enrolling = True
                 self.pending_name = None 
                 # Mode 1: Register a face when camera identifies an unknown face
-                #winsound.PlaySound(self.voice_audio, flags=winsound.SND_ASYNC)
-                print("What is your name?")
+                winsound.PlaySound(str(self.voice_audio), flags=winsound.SND_ASYNC)
 
             # Nếu luồng STT đã bắt được tên mới, lưu vào pending_name để dùng suốt quá trình
             if self.user_name is not None:

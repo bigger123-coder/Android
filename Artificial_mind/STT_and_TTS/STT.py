@@ -1,7 +1,7 @@
 from faster_whisper import WhisperModel
 from pathlib import Path
 from scipy.signal import resample_poly
-from .Database_manager import save_person_name
+from Artificial_mind.STT_and_TTS.Database_manager import save_person_name
 
 import threading
 import numpy as np
@@ -22,6 +22,7 @@ def get_whisper_model():
     return _model
 
 def process_audio(audio_data):
+    print("Hàm process_audio đã được kích hoạt")
     audio_16k = resample_poly(audio_data, up=1, down=3).astype(np.float32)
 
     puntuation_tokens = [0, 2467]
@@ -33,6 +34,9 @@ def process_audio(audio_data):
     person_name = None 
 
     for segment in segments:
+        # Debug
+        # print(f"Phát hiện câu: {segment}")
+
         text = segment.text.strip()
        
         match = re.search(r"\bmy\s+name\s+is\s+(.+)", text, re.IGNORECASE)

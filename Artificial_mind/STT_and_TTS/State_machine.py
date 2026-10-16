@@ -1,6 +1,6 @@
 from statemachine import StateChart, State
-from .VAD import VADlistener
-from .STT import process_audio
+from Artificial_mind.STT_and_TTS.VAD import VADlistener
+from Artificial_mind.STT_and_TTS.STT import process_audio
 
 import threading
 

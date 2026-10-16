@@ -1,4 +1,4 @@
-from ...config import gpu_runtime
+from Artificial_mind.config import gpu_runtime
 from insightface.model_zoo import get_model
 import cv2
 

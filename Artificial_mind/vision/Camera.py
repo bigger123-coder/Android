@@ -1,6 +1,6 @@
 import cv2
 
-from .VisionPipeline import VisionPipeline
+from Artificial_mind.vision.VisionPipeline import VisionPipeline
 
 # Initialize the camera
 cam = cv2.VideoCapture(0)

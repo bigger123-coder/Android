@@ -1,10 +1,10 @@
-from ...config import gpu_runtime
+from Artificial_mind.config import gpu_runtime
 from insightface.model_zoo import get_model
 from pathlib import Path
-from .Alignment import face_alighment
-from . import Frame_filter
-from .FaceDatabase import FaceDatabase
-from ...STT_and_TTS.Database_manager import get_next_id, load_person_database, update_person_embed_dir
+from Artificial_mind.vision.Face.Alignment import face_alighment
+from Artificial_mind.vision.Face import Frame_filter
+from Artificial_mind.vision.Face.FaceDatabase import FaceDatabase
+from Artificial_mind.STT_and_TTS.Database_manager import get_next_id, load_person_database, update_person_embed_dir
 
 import numpy as np
 import cv2, math
@@ -29,7 +29,7 @@ class FaceRecognizer:
 
         # Create the path to the embedding folder
         self.BASE_DIR = Path(__file__).resolve().parent.parent.parent
-        self.EMBED_FOLDER = self.BASE_DIR / "memory" / "face embedding"
+        self.EMBED_FOLDER = self.BASE_DIR / "memory" / "Identify_face_name"
 
         # Create EMBED_FOLDER if it was not created
         self.EMBED_FOLDER.mkdir(parents=True, exist_ok=True)
