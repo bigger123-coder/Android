@@ -1,10 +1,10 @@
-from config import gpu_runtime
+from ...config import gpu_runtime
 from insightface.model_zoo import get_model
 from pathlib import Path
-from vision.Face.Alignment import face_alighment
-from vision.Face import Frame_filter
-from vision.Face.FaceDatabase import FaceDatabase
-from STT_and_TTS.Database_manager import get_next_id, load_person_database, update_person_embed_dir
+from .Alignment import face_alighment
+from . import Frame_filter
+from .FaceDatabase import FaceDatabase
+from ...STT_and_TTS.Database_manager import get_next_id, load_person_database, update_person_embed_dir
 
 import numpy as np
 import cv2, math

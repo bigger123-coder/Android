@@ -1,7 +1,7 @@
 from faster_whisper import WhisperModel
 from pathlib import Path
 from scipy.signal import resample_poly
-from Database_manager import save_person_name
+from .Database_manager import save_person_name
 
 import threading
 import numpy as np
@@ -62,3 +62,4 @@ def process_audio(audio_data):
             if name_words:
                 person_name = " ".join(name_words)
                 save_person_name(person_name)
+                return person_name

@@ -6,13 +6,15 @@ import winsound
 
 from pathlib import Path
 
-from vision.Face.Detector import FaceDetector
-from vision.Face.Recognition import FaceRecognizer
-from vision.Hand.Gesture_recognizer import GestureRecognizer
-from vision.Object.Detection import ObjectDetection
-from config.vision_config import ModelsConfig
-from STT_and_TTS.VAD import VADlistener
-from STT_and_TTS.State_machine import STTStateMachine
+from .Face.Detector import FaceDetector
+from .Face.Recognition import FaceRecognizer
+from .Hand.Gesture_recognizer import GestureRecognizer
+from .Object.Detection import ObjectDetection
+
+from ..config.vision_config import ModelsConfig
+
+from ..STT_and_TTS.VAD import VADlistener
+from ..STT_and_TTS.State_machine import STTStateMachine
 
 class VisionPipeline:
     def __init__(self):
@@ -44,6 +46,10 @@ class VisionPipeline:
         # Voice audio path
         self.base_dir = Path(__file__).resolve().parent.parent
         self.voice_audio = self.base_dir / "Voice" / "Greeting_voice.wav"
+
+        # Saving name status 
+        self.is_enrolling = False
+        self.pending_name = None
 
     # ==========================
     # PROCESSING
@@ -77,15 +83,26 @@ class VisionPipeline:
                 break
 
         if has_unknown_face:
-            # Mode 1: Register a face when camera identifies an unknown face
-            winsound.PlaySound(self.voice_audio, flags=winsound.SND_ASYNC)
-            self.face_recognizer.saving_embedding(frame, kpsses, self.user_name)
+            if not self.is_enrolling:
+                self.is_enrolling = True
+                self.pending_name = None 
+                # Mode 1: Register a face when camera identifies an unknown face
+                #winsound.PlaySound(self.voice_audio, flags=winsound.SND_ASYNC)
+                print("What is your name?")
 
-            # Draw red square and display "unknown" on unrecognized face
-            self.face_recognizer.recognize_faces(frame, kpsses, bboxes)
+            # Nếu luồng STT đã bắt được tên mới, lưu vào pending_name để dùng suốt quá trình
+            if self.user_name is not None:
+                self.pending_name = self.user_name
+                self.user_name = None
 
-            # Reset variable user_name to None
-            self.user_name = None
+            # Tiến hành lưu embedding nếu đã có tên người dùng
+            if self.pending_name is not None:
+                self.face_recognizer.saving_embedding(frame, kpsses, self.pending_name)
+
+        else:
+            if self.is_enrolling:
+                self.is_enrolling = False
+                self.pending_name = None
 
         # ==========================
         # Gesture

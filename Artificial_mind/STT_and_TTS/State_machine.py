@@ -4,7 +4,6 @@ from .STT import process_audio
 
 import threading
 
-
 class STTStateMachine(StateChart):
     # Initiate events
     IDLE = State(initial=True)
